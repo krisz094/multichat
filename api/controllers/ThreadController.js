@@ -7,18 +7,12 @@
 
 module.exports = {
   create: async function (req, res) {
-  /*   const otherUserId = req.param('userId');
-
-    const creatorUser = await User.findOne({ id: req.user.id });
-    const targetUser = await User.findOne({ id: otherUserId });
+    const friendshipId = req.param('friendshipId');
     const newThread = await Thread.create({
-      users: [
-        creatorUser.id,
-        targetUser.id
-      ]
+      friendship: friendshipId
     }).fetch();
 
-    res.ok(newThread); */
+    return res.ok(newThread);
   },
   archive: async function (req, res) {
     await Thread
@@ -33,15 +27,23 @@ module.exports = {
     return res.ok();
   },
   getMessages: async function (req, res) {
-    // const user = await User.findOne({ id: req.user.id });
-    let messages = await Thread.findOne({ id: req.param('threadId') }).populate('messages');
-    messages.messages.forEach(message => {
-      message.isUserSender = req.user.id == message.sender;
+    const currUserId = req.user.id;
+    const threadId = req.param('threadId');
+    const messages = await Message.find({ thread: threadId });
+    messages.forEach(msg => {
+      msg.sentByYou = msg.sender == currUserId;
     })
-    messages = messages.messages;
     return res.ok(messages);
   },
   getThreadsForFriendship: async function (req, res) {
+    try {
+      const friendshipId = req.param('friendshipId');
+      const threads = await Thread.find({ friendship: friendshipId });
+      return res.ok(threads);
+    }
+    catch (err) {
+      return res.badRequest(err);
+    }
     return res.badRequest('not available yet');
   }
 };

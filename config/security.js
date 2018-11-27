@@ -28,11 +28,12 @@ module.exports.security = {
   *                                                                          *
   ***************************************************************************/
 
-  // cors: {
-  //   allRoutes: false,
-  //   allowOrigins: '*',
-  //   allowCredentials: false,
-  // },
+  cors: {
+    allRoutes: true,
+    allowOrigins: ['http://localhost:8100', 'http://localhost:8000', 'http://krisz094.asuscomm.com:5000'],
+    allowCredentials: true,
+    allowRequestHeaders: 'content-type,authorization'
+  },
 
 
   /****************************************************************************
@@ -49,6 +50,6 @@ module.exports.security = {
   *                                                                           *
   ****************************************************************************/
 
-  // csrf: false
+  csrf: false
 
 };

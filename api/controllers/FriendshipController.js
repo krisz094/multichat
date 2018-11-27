@@ -5,22 +5,51 @@
  * @help        :: See https://sailsjs.com/docs/concepts/actions
  */
 
+const Emailaddresses = require('machinepack-emailaddresses')
+
 module.exports = {
   sendFriendRequest: async (req, res) => {
     try {
       const currUserId = req.user.id;
-      const otherUserId = req.param('userId');
+      Emailaddresses.validate({
+        string: req.param('email'),
+      }).exec({
+        error: function (err) {
+          return res.serverError(err)
+        },
+        invalid: function () {
+          return res.badRequest('Doesn\'t look like an email address.')
+        },
+        success: async function () {
 
-      if (currUserId == otherUserId) {
-        return res.badRequest();
-      }
+          const otherUser = await User.findOne({ email: req.param('email') });
+          if (!otherUser) {
+            return  res.badRequest('Couldn\'t find user.');
+          }
+          const otherUserId = otherUser.id;
+          if (currUserId == otherUserId) {
+            return res.badRequest('Can\'t send a request to yourself.');
+          }
 
-      const newFriendship = await Friendship.create({
-        user_a: currUserId,
-        user_b: otherUserId
-      }).fetch();
+          const existingFriendship = await Friendship.find({
+            or: [
+              { user_a: currUserId, user_b: otherUserId },
+              { user_b: currUserId, user_a: otherUserId }
+            ]
+          });
 
-      return res.ok(newFriendship);
+          if (existingFriendship.length != 0) {
+            return res.badRequest('Friendship already exists.');
+          }
+
+          const newFriendship = await Friendship.create({
+            user_a: currUserId,
+            user_b: otherUserId
+          }).fetch();
+
+          return res.ok(newFriendship);
+        }
+      })
     }
     catch (err) {
       return res.badRequest(err);

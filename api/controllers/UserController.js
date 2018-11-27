@@ -34,47 +34,45 @@ module.exports = {
         return res.badRequest('Doesn\'t look like an email address.')
       },
       success: async function () {
-        var user = await sails.helpers.createUser.with({
+        sails.helpers.createUser.with({
           email: req.param('email'),
           password: req.param('password'),
-        })
+          nickname: req.param('nickname')
+        }).switch({
+          success: function (user) {
+            // after creating a user record, log them in at the same time by issuing their first jwt token and setting a cookie
+            var token = jwt.sign({ user: user.id }, sails.config.jwtSecret, { expiresIn: sails.config.jwtExpires })
 
-        // after creating a user record, log them in at the same time by issuing their first jwt token and setting a cookie
-        var token = jwt.sign({ user: user.id }, sails.config.jwtSecret, { expiresIn: sails.config.jwtExpires })
-        res.cookie('sailsjwt', token, {
-          signed: true,
-          // domain: '.yourdomain.com', // always use this in production to whitelist your domain
-          maxAge: sails.config.jwtExpires
-        })
-
-        // if this is not an HTML-wanting browser, e.g. AJAX/sockets/cURL/etc.,
-        // send a 200 response letting the user agent know the signup was successful.
-        if (req.wantsJSON) {
-          return res.ok(token)
-        }
-
-        // otherwise if this is an HTML-wanting browser, redirect to /welcome.
-        return res.redirect('/welcome')
+            return res.ok(token);
+          },
+          invalid: function (err) {
+            return res.badRequest('invalid request', err)
+          },
+          emailAlreadyInUse: function () {
+            return res.badRequest('email already used')
+          },
+          error: function (err) {
+            return res.serverError(err);
+          }
+        });
       }
-    })
+    });
   },
   login: async function (req, res) {
     var user = await User.findOne({
       email: req.param('email')
     })
-    if (!user) return res.notFound()
+    if (!user) return res.badRequest('User not found or password invalid');
 
-    await bcrypt.compare(req.param('password'), user.password)
+    const result = await bcrypt.compare(req.param('password'), user.password)
 
+    if (!result) {
+      return res.badRequest('User not found or password invalid');
+    }
     // if no errors were thrown, then grant them a new token
     // set these config vars in config/local.js, or preferably in config/env/production.js as an environment variable
     var token = jwt.sign({ user: user.id }, sails.config.jwtSecret, { expiresIn: sails.config.jwtExpires })
-    // set a cookie on the client side that they can't modify unless they sign out (just for web apps)
-    res.cookie('sailsjwt', token, {
-      signed: true,
-      // domain: '.yourdomain.com', // always use this in production to whitelist your domain
-      maxAge: sails.config.jwtExpires
-    })
+
     // provide the token to the client in case they want to store it locally to use in the header (eg mobile/desktop apps)
     return res.ok(token)
   },
@@ -94,11 +92,31 @@ module.exports = {
         or: [
           { user_a: currUserId },
           { user_b: currUserId }
-        ]
+        ],
+        active: true
       }).populate('user_a').populate('user_b');
       const mappedFriends = friendships.map(friendship => {
         const otherUser = friendship.user_a.id == currUserId ? friendship.user_b : friendship.user_a;
-        return otherUser;
+
+        return { friendshipId: friendship.id, friend: otherUser };
+      })
+      return res.ok(mappedFriends);
+    }
+    catch (err) {
+      return res.badRequest(err);
+    }
+  },
+  getFriendRequests: async function (req, res) {
+    try {
+      const currUserId = req.user.id;
+      const friendships = await Friendship.find({
+        user_b: currUserId,
+        active: false
+      }).populate('user_a').populate('user_b');
+      const mappedFriends = friendships.map(friendship => {
+        const otherUser = friendship.user_a.id == currUserId ? friendship.user_b : friendship.user_a;
+
+        return { friendshipId: friendship.id, friend: otherUser };
       })
       return res.ok(mappedFriends);
     }

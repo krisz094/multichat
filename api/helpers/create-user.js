@@ -10,7 +10,10 @@ module.exports = {
 		},
 		password: {
 			type: 'string'
-		},
+    },
+    nickname: {
+      type: 'string'
+    }
 	},
 
 	exits: {
@@ -26,7 +29,8 @@ module.exports = {
 
 	fn: async function(inputs, exits) {
 		var attr = {
-			email: inputs.email.toLowerCase(),
+      email: inputs.email.toLowerCase(),
+      nickname: inputs.nickname
 		}
 
 		if (inputs.password) {

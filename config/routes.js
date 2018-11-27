@@ -29,9 +29,10 @@ module.exports.routes = {
 
   // User
   'POST /api/user/register': 'UserController.register',
-  'PATCH /api/user/login': 'UserController.login',
-  'PATCH /api/user/logout': 'UserController.logout',
+  'POST /api/user/login': 'UserController.login',
+  'POST /api/user/logout': 'UserController.logout',
   'GET /api/user/friends': 'UserController.getFriends',
+  'GET /api/user/friends/requests': 'UserController.getFriendRequests',
 
   // Friendship
   'POST /api/friendship': 'FriendshipController.sendFriendRequest',
