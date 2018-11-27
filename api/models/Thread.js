@@ -34,7 +34,10 @@ module.exports = {
     messages: {
       collection: 'message',
       via: 'thread'
-    }
+    },
+    lastActivity: {
+      model: 'message'
+    },
   },
 
 };

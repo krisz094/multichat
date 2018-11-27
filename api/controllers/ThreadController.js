@@ -29,7 +29,35 @@ module.exports = {
   getMessages: async function (req, res) {
     const currUserId = req.user.id;
     const threadId = req.param('threadId');
-    const messages = await Message.find({ thread: threadId });
+    const afterMsgId = req.param('afterId');
+    const beforeMsgId = req.param('beforeId');
+    let messages;
+    if (afterMsgId) {
+      messages = await Message.find({
+        where: {
+          thread: threadId,
+          id: { '>': afterMsgId }
+        },
+      })
+    }
+    else if (beforeMsgId) {
+      messages = await Message.find({
+        where: {
+          thread: threadId,
+          id: { '<': beforeMsgId }
+        },
+        sort: 'createdAt DESC',
+        limit: 10,
+      });
+      messages = messages.reverse();
+    } else {
+      messages = await Message.find({
+        where: { thread: threadId },
+        sort: 'createdAt DESC',
+        limit: 10,
+      });
+      messages = messages.reverse();
+    }
     messages.forEach(msg => {
       msg.sentByYou = msg.sender == currUserId;
     })
@@ -37,8 +65,18 @@ module.exports = {
   },
   getThreadsForFriendship: async function (req, res) {
     try {
+      const currUserId = req.user.id;
+      // friendship check TODO
       const friendshipId = req.param('friendshipId');
-      const threads = await Thread.find({ friendship: friendshipId });
+      const threads = await Thread.find({
+        where: { friendship: friendshipId },
+        sort: 'updatedAt DESC'
+      }).populate('lastActivity');
+      threads.forEach(thread => {
+        if (thread.lastActivity) {
+          thread.lastActivity.sentByYou = currUserId == thread.lastActivity.sender;
+        }
+      });
       return res.ok(threads);
     }
     catch (err) {

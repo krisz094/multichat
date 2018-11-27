@@ -11,8 +11,25 @@ module.exports = {
     const text = req.param('text');
     const threadId = req.param('threadId');
 
-    const thread = await Thread.findOne({ id: threadId });
-    const newMessage = await Message.create({ text, thread: threadId, sender: senderUser.id });
+    if (text.trim().length == 0) {
+      return res.badRequest();
+    }
+
+    const threadCheck = await Thread.findOne({ id: threadId });
+    if (!threadCheck) {
+      return res.badRequest('You\'re not allowed to send messages to this thread');
+    }
+    const friendshipCheck = await Friendship.findOne({ id: threadCheck.friendship });
+    if (!friendshipCheck) {
+      return res.badRequest('You\'re not allowed to send messages to this thread');
+    }
+    if (!(friendshipCheck.user_a == senderUser.id || friendshipCheck.user_b == senderUser.id)) {
+      return res.badRequest('You\'re not allowed to send messages to this thread');
+    }
+    const newMessage = await Message.create({ text, thread: threadId, sender: senderUser.id }).fetch();
+
+
+    const thread = await Thread.updateOne({ id: threadId }).set({ lastActivity: newMessage.id });
 
     return res.ok();
   },
